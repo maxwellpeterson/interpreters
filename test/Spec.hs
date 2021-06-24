@@ -26,6 +26,11 @@ main = hspec $ do
         [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
         (E.AppC "square" (E.Value 5))
         `shouldBe` Right 25
+    it "applies the same function twice" $ do
+      E.interp
+        [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
+        (E.Add (E.AppC "square" (E.Value 3)) (E.AppC "square" (E.Value 4)))
+        `shouldBe` Right 25
     it "applies a function within an expression" $ do
       E.interp
         [E.FunDefC "adder" "yy" (E.Add (E.IdC "yy") (E.Value 8))]
@@ -42,3 +47,8 @@ main = hspec $ do
       E.interp [] (E.AppC "square" (E.Value 5)) `shouldBe` Left (E.UndefinedFunction "square")
     it "returns an error for an unbound identifier" $ do
       E.interp [] (E.Add (E.Value 10) (E.IdC "zz")) `shouldBe` Left (E.UnboundIdentifier "zz")
+    it "returns an error for an invalid expression provided as a function argument" $ do
+      E.interp
+        [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
+        (E.AppC "square" (E.IdC "yy"))
+        `shouldBe` Left (E.UnboundIdentifier "yy")
