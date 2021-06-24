@@ -1,20 +1,20 @@
 import qualified Core.ArithC as A
 import qualified Core.ExprC as E
-import Test.Hspec
+import Test.Hspec (describe, hspec, it, shouldBe)
 
 main :: IO ()
 main = hspec $ do
-  describe "interpArithC" $ do
+  describe "interp" $ do
     it "returns one value" $ do
-      A.interpArithC (A.Value 5) `shouldBe` 5
+      A.interp (A.Value 5) `shouldBe` 5
     it "adds two values" $ do
-      A.interpArithC (A.Add (A.Value 7) (A.Value 10)) `shouldBe` 17
+      A.interp (A.Add (A.Value 7) (A.Value 10)) `shouldBe` 17
     it "multiplies two values" $ do
-      A.interpArithC (A.Mul (A.Value 2) (A.Value 25)) `shouldBe` 50
+      A.interp (A.Mul (A.Value 2) (A.Value 25)) `shouldBe` 50
     it "adds and multiplies three values" $ do
-      A.interpArithC (A.Add (A.Value 37) (A.Mul (A.Value 15) (A.Value (-3)))) `shouldBe` -8
+      A.interp (A.Add (A.Value 37) (A.Mul (A.Value 15) (A.Value (-3)))) `shouldBe` -8
     it "adds and multiplies many values" $ do
-      A.interpArithC
+      A.interp
         ( A.Mul
             (A.Add (A.Value 5) (A.Mul (A.Value (-22)) (A.Value (-2))))
             (A.Mul (A.Add (A.Value 15) (A.Value 100)) (A.Value 10))

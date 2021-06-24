@@ -1,6 +1,6 @@
 module Core.ArithC
   ( ArithC (..),
-    interpArithC,
+    interp,
   )
 where
 
@@ -8,7 +8,7 @@ where
 
 data ArithC = Value Int | Add ArithC ArithC | Mul ArithC ArithC
 
-interpArithC :: ArithC -> Int
-interpArithC (Value num) = num
-interpArithC (Add left right) = interpArithC left + interpArithC right
-interpArithC (Mul left right) = interpArithC left * interpArithC right
+interp :: ArithC -> Int
+interp (Value num) = num
+interp (Add left right) = interp left + interp right
+interp (Mul left right) = interp left * interp right
