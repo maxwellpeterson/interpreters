@@ -23,22 +23,22 @@ main = hspec $ do
   describe "interp with ExprC" $ do
     it "applies a simple function" $ do
       E.interp
-        (E.AppC "square" (E.Value 5))
         [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
+        (E.AppC "square" (E.Value 5))
         `shouldBe` Right 25
     it "applies a function within an expression" $ do
       E.interp
-        (E.Mul (E.Value 5) (E.AppC "adder" (E.Mul (E.Value (-10)) (E.Value 3))))
         [E.FunDefC "adder" "yy" (E.Add (E.IdC "yy") (E.Value 8))]
+        (E.Mul (E.Value 5) (E.AppC "adder" (E.Mul (E.Value (-10)) (E.Value 3))))
         `shouldBe` Right (-110)
     it "applies a nested function" $ do
       E.interp
-        (E.AppC "outer" (E.Value 5))
         [ E.FunDefC "outer" "oo" (E.Add (E.Value 10) (E.AppC "inner" (E.IdC "oo"))),
           E.FunDefC "inner" "ii" (E.Mul (E.Value 3) (E.IdC "ii"))
         ]
+        (E.AppC "outer" (E.Value 5))
         `shouldBe` Right 25
     it "returns an error for an undefined function" $ do
-      E.interp (E.AppC "square" (E.Value 5)) [] `shouldBe` Left (E.UndefinedFunction "square")
+      E.interp [] (E.AppC "square" (E.Value 5)) `shouldBe` Left (E.UndefinedFunction "square")
     it "returns an error for an unbound identifier" $ do
-      E.interp (E.Add (E.Value 10) (E.IdC "zz")) [] `shouldBe` Left (E.UnboundIdentifier "zz")
+      E.interp [] (E.Add (E.Value 10) (E.IdC "zz")) `shouldBe` Left (E.UnboundIdentifier "zz")
