@@ -1,6 +1,8 @@
 module Main where
 
-import Lib
+import Core.ArithC (ArithC (..), interpArithC)
 
 main :: IO ()
-main = someFunc
+main = do
+  let astExample = Value 5
+  print . interpArithC $ astExample

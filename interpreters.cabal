@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a988424ac9248ff04bac9a27044fb67aaab578e85c26cf2d1f7cd8f54a2283ad
+-- hash: 54ce8918914061d6a74010fa5429732f3f75f8ec0eebe0a0afd8345061e1fbc7
 
 name:           interpreters
 version:        0.1.0.0
@@ -27,6 +27,8 @@ source-repository head
 
 library
   exposed-modules:
+      Core.ArithC
+      Core.ExprC
       Lib
   other-modules:
       Paths_interpreters
@@ -58,5 +60,6 @@ test-suite interpreters-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , hspec
     , interpreters
   default-language: Haskell2010
