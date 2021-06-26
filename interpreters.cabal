@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 54ce8918914061d6a74010fa5429732f3f75f8ec0eebe0a0afd8345061e1fbc7
+-- hash: 46305b0571609f782c8e4f1dc9c29f1e14ccea11ac8dcc80180e88e473f8470c
 
 name:           interpreters
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Core.ArithC
+      Core.Deferred
       Core.ExprC
       Lib
   other-modules:
