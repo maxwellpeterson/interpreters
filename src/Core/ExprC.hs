@@ -14,11 +14,11 @@ import Data.List (find, lookup)
 
 -- Expressions with Function Application
 
-data ExprC = Value Int | Add ExprC ExprC | Mul ExprC ExprC | AppC Name ExprC | IdC Identifier
+data ExprC = Value Int | Add ExprC ExprC | Mul ExprC ExprC | AppC Name ExprC | IdC Identifier deriving (Show)
 
 -- Function Definitions
 
-data FunDefC = FunDefC Name Identifier ExprC
+data FunDefC = FunDefC Name Identifier ExprC deriving (Show)
 
 type Name = String
 
