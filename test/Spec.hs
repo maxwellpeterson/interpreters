@@ -10,6 +10,8 @@ import Test.QuickCheck.Arbitrary (Arbitrary (..))
 import Test.QuickCheck.Gen (Gen, oneof, sized)
 import Test.QuickCheck.Property (Discard (Discard), Testable, forAll, property)
 
+-- Clean these up by implementing Arbitrary typeclass?
+
 testNames :: [E.Name]
 testNames = ["a", "b", "c", "d", "e"]
 
