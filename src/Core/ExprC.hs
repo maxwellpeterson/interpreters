@@ -12,28 +12,35 @@ where
 
 import Data.List (find, lookup)
 
--- Expressions with Function Application
+-- Expressions with function application
 
-data ExprC = Value Int | Add ExprC ExprC | Mul ExprC ExprC | AppC Name ExprC | IdC Identifier deriving (Show)
+data ExprC a
+  = Value a
+  | Add (ExprC a) (ExprC a)
+  | Mul (ExprC a) (ExprC a)
+  | AppC Name (ExprC a)
+  | IdC Identifier
+  deriving (Show)
 
--- Function Definitions
+-- Function definitions
 
-data FunDefC = FunDefC Name Identifier ExprC deriving (Show)
+data FunDefC a = FunDefC Name Identifier (ExprC a) deriving (Show)
 
 type Name = String
 
 type Identifier = String
 
--- Possible Error States
+-- Possible error states
 
 data InterpError = UndefinedFunction Name | UnboundIdentifier Identifier deriving (Eq, Show)
 
 type InterpResult = Either InterpError
 
-interp :: [FunDefC] -> ExprC -> InterpResult Int
+interp :: Num a => [FunDefC a] -> ExprC a -> InterpResult a
 interp funDefs = interpExpr
   where
-    interpExpr :: ExprC -> InterpResult Int
+    -- Need scoped type variables in order to add signature here?
+    -- interpExpr :: ExprC a -> Either InterpError a
     interpExpr (Value num) = return num
     interpExpr (Add left right) = (+) <$> interpExpr left <*> interpExpr right
     interpExpr (Mul left right) = (*) <$> interpExpr left <*> interpExpr right
@@ -43,16 +50,14 @@ interp funDefs = interpExpr
         inputValue <- interpExpr inputExpr
         interpExpr (subst inputValue identifier body)
     interpExpr (IdC identifier) = Left (UnboundIdentifier identifier)
-    lookupFunDef :: Name -> Maybe FunDefC
+    -- lookupFunDef :: Name -> Maybe (FunDefC a)
     lookupFunDef targetName = find (\(FunDefC name _ _) -> name == targetName) funDefs
 
-subst :: Int -> Identifier -> ExprC -> ExprC
+subst :: a -> Identifier -> ExprC a -> ExprC a
 subst value targetIdentifier = substExpr
   where
     substExpr (Add left right) = Add (substExpr left) (substExpr right)
     substExpr (Mul left right) = Mul (substExpr left) (substExpr right)
-    -- Check that function body should be untouched here. I think so, since
-    -- function is defined in a separate scope...
     substExpr (AppC name inputExpr) = AppC name (substExpr inputExpr)
     substExpr (IdC identifier) | identifier == targetIdentifier = Value value
     substExpr unchanged = unchanged -- Is this a bad pattern?

@@ -5,14 +5,15 @@ import Data.List (find)
 
 -- Structures for Deferred Substitution
 
-type Environment = [Binding]
+type Environment a = [Binding a]
 
-type Binding = (E.Identifier, Int)
+type Binding a = (E.Identifier, a)
 
-interp :: [E.FunDefC] -> E.ExprC -> E.InterpResult Int
+interp :: Num a => [E.FunDefC a] -> E.ExprC a -> E.InterpResult a
 interp funDefs = interpEnv []
   where
-    interpEnv :: Environment -> E.ExprC -> E.InterpResult Int
+    -- Same situation with scoped type variables...
+    -- interpEnv :: Environment a -> E.ExprC a -> E.InterpResult a
     interpEnv _ (E.Value num) = return num
     interpEnv env (E.Add left right) = (+) <$> interpEnv env left <*> interpEnv env right
     interpEnv env (E.Mul left right) = (*) <$> interpEnv env left <*> interpEnv env right
@@ -25,5 +26,5 @@ interp funDefs = interpEnv []
     interpEnv env (E.IdC identifier) = case lookup identifier env of
       Nothing -> Left (E.UnboundIdentifier identifier)
       Just num -> return num
-    lookupFunDef :: E.Name -> Maybe E.FunDefC
+    -- lookupFunDef :: E.Name -> Maybe (E.FunDefC a)
     lookupFunDef targetName = find (\(E.FunDefC name _ _) -> name == targetName) funDefs
