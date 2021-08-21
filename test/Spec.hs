@@ -1,56 +1,62 @@
-import Control.Monad (filterM, liftM, liftM2, liftM3)
+import Control.Monad (liftM2)
 import qualified Core.ArithC as A
 import qualified Core.Deferred as D
 import qualified Core.ExprC as E
-import Data.List (find)
-import Data.Maybe (isNothing)
-import Test.Hspec (SpecWith, describe, hspec, it, shouldBe, shouldSatisfy)
+import Test.Hspec (SpecWith, describe, hspec, it, shouldBe, shouldNotSatisfy)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck.Arbitrary (Arbitrary (..))
-import Test.QuickCheck.Gen (Gen, oneof, sized)
-import Test.QuickCheck.Property (Discard (Discard), Testable, forAll, property)
+import Test.QuickCheck.Gen (Gen, elements, frequency, oneof, sized)
+import Test.QuickCheck.Property (Discard (Discard), Testable, label, property)
 
--- Clean these up by implementing Arbitrary typeclass?
+-- TODO: Figure out how to cleanly create different custom generator
+-- expressions. Each of the `prop` test cases below would benefit from a
+-- custom-tailored generator, with different distributions of undefined
+-- functions, unbound identifiers, etc. Same situation for generating function
+-- bodies that can't create infinite loops.
 
 testNames :: [E.Name]
-testNames = ["a", "b", "c", "d", "e"]
+testNames = ["linear", "cubic", "foo"]
 
-testName :: Gen E.Name
-testName = oneof $ map return testNames
+testNameFreqs :: [Int]
+testNameFreqs = [40, 30, 1]
 
-testIdentifiers :: [E.Identifier]
-testIdentifiers = ["l", "m", "n", "o", "p"]
+testFunDefs :: [E.FunDefC Int]
+testFunDefs =
+  [ -- linear(a) = 5a + 15
+    E.FunDefC "linear" "aa" (E.Add (E.Mul (E.Value 5) (E.IdC "aa")) (E.Value 15)),
+    -- cubic(b) = b^3 + 5b^2 + 15b
+    E.FunDefC
+      "cubic"
+      "bb"
+      ( E.Add
+          (E.Mul (E.IdC "bb") (E.Mul (E.IdC "bb") (E.IdC "bb")))
+          (E.Mul (E.IdC "bb") (E.AppC "linear" (E.IdC "bb")))
+      )
+  ]
 
-testIdentifier :: Gen E.Identifier
-testIdentifier = oneof $ map return testIdentifiers
+instance Arbitrary a => Arbitrary (E.ExprC a) where
+  arbitrary = sized genExpr
+    where
+      genExpr size
+        -- Don't insert arbitrary identifiers into expressions
+        | size <= 0 = oneof [fmap E.Value arbitrary]
+        | otherwise =
+          oneof
+            [ liftM2 E.Add left right,
+              liftM2 E.Mul left right,
+              liftM2
+                E.AppC
+                (frequency (zipWith (\name weight -> (weight, return name)) testNames testNameFreqs))
+                inputExpr
+            ]
+        where
+          left = genExpr (size `div` 2)
+          right = genExpr (size `div` 2)
+          inputExpr = genExpr (size - 1)
 
-testExpr :: Gen E.ExprC
-testExpr = sized genExpr
-  where
-    genExpr size
-      | size <= 0 = oneof [fmap E.Value arbitrary, fmap E.IdC testIdentifier]
-      | otherwise =
-        oneof
-          [ liftM2 E.Add subExpr subExpr,
-            liftM2 E.Mul subExpr subExpr,
-            liftM2 E.AppC testName inputExpr
-          ]
-      where
-        subExpr = genExpr (size `div` 2)
-        inputExpr = genExpr (size - 1)
-
-powerset :: [a] -> [[a]]
-powerset = filterM (const [True, False])
-
-testFunDefs :: Gen [E.FunDefC]
--- TODO: Understand what mapM is doing here...
-testFunDefs = oneof $ map (mapM genFunDef) (powerset testNames)
-  where
-    genFunDef :: E.Name -> Gen E.FunDefC
-    genFunDef name = fmap (E.FunDefC name "x") testExpr
-
-testInput :: Gen ([E.FunDefC], E.ExprC)
-testInput = (,) <$> testFunDefs <*> testExpr
+-- DANGER!! Re-using the default expression generator for function bodies may
+-- create programs that don't terminate, since allowing arbitrary function calls
+-- in function bodies can result in infinite loops.
 
 main :: IO ()
 main = hspec $ do
@@ -74,10 +80,18 @@ main = hspec $ do
     testInterpExprC E.interp
   describe "interp with ExprC (deferred substitution)" $ do
     testInterpExprC D.interp
-    it "behaves the same as non-deferred substitution" $
-      forAll testInput (\(funDefs, expr) -> E.interp funDefs expr `shouldBe` D.interp funDefs expr)
+  describe "compare substitution strategies" $ do
+    prop "both strategies give the same result" $
+      \expr ->
+        let firstResult = E.interp testFunDefs expr
+         in label (labelResult firstResult) $ firstResult `shouldBe` D.interp testFunDefs expr
 
-testInterpExprC :: ([E.FunDefC] -> E.ExprC -> E.InterpResult Int) -> SpecWith ()
+labelResult :: E.InterpResult a -> String
+labelResult (Left (E.UndefinedFunction _)) = "UndefinedFunction"
+labelResult (Left (E.UnboundIdentifier _)) = "UnboundIdentifier"
+labelResult (Right _) = "Value"
+
+testInterpExprC :: ([E.FunDefC Int] -> E.ExprC Int -> E.InterpResult Int) -> SpecWith ()
 testInterpExprC interpExprC = do
   it "applies a simple function" $ do
     interpExprC
@@ -101,6 +115,8 @@ testInterpExprC interpExprC = do
       ]
       (E.AppC "outer" (E.Value 5))
       `shouldBe` Right 25
+  it "applies a function from within another function" $ do
+    interpExprC testFunDefs (E.AppC "cubic" (E.Value 10)) `shouldBe` Right 1650
   it "returns an error for an undefined function" $ do
     interpExprC [] (E.AppC "square" (E.Value 5)) `shouldBe` Left (E.UndefinedFunction "square")
   it "returns an error for an unbound identifier" $ do
@@ -110,36 +126,23 @@ testInterpExprC interpExprC = do
       [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
       (E.AppC "square" (E.IdC "yy"))
       `shouldBe` Left (E.UnboundIdentifier "yy")
-  it "reports a valid undefined function" $
-    -- In case of undefined function, reported function name appears in testNames
-    forAll
-      testInput
-      ( \(funDefs, expr) -> case interpExprC funDefs expr of
-          Left (E.UndefinedFunction name) ->
-            property
-              (name `elem` testNames)
-          _ -> property Discard
-      )
-  it "reports an undefined function that was not provided" $
-    -- In case of undefined function, reported function name does not appear in
-    -- given list of function names
-    forAll
-      testInput
-      ( \(funDefs, expr) -> case interpExprC funDefs expr of
-          Left (E.UndefinedFunction missingName) ->
-            property
-              (isNothing (find (\(E.FunDefC name _ _) -> name == missingName) funDefs))
-          _ -> property Discard
-      )
-
--- Crashes with out of memory error... Maybe unbound identifiers are too rare?
--- it "reports a valid unbound identifier" $
---   -- In case of unbound identifier, reported identifer appears in testIdentifiers
---   forAll
---     testInput
---     ( \(funDefs, expr) -> case interpExprC funDefs expr of
---         Left (E.UnboundIdentifier identifier) ->
---           property
---             (identifier `elem` testIdentifiers)
---         _ -> property Discard
---     )
+  -- Undefined
+  prop "undefined function name appears in testNames" $
+    \expr -> case interpExprC testFunDefs expr of
+      Left (E.UndefinedFunction name) ->
+        property
+          (name `elem` testNames)
+      _ -> property Discard
+  prop "undefined function name does NOT appear in testFunDefs" $
+    \expr -> case interpExprC testFunDefs expr of
+      Left (E.UndefinedFunction name) ->
+        property
+          (name `notElem` map (\(E.FunDefC name _ _) -> name) testFunDefs)
+      _ -> property Discard
+  -- As defined, our generator will never create unbound identifiers
+  prop "does NOT report unbound identifier" $
+    \expr ->
+      let unboundIdentifier :: E.InterpResult a -> Bool
+          unboundIdentifier (Left (E.UnboundIdentifier _)) = True
+          unboundIdentifier _ = False
+       in interpExprC testFunDefs expr `shouldNotSatisfy` unboundIdentifier
