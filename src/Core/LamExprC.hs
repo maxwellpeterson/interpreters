@@ -1,6 +1,3 @@
-{-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Core.LamExprC
   ( LamExprC (..),
     Closure (..),
@@ -26,6 +23,7 @@ data LamExprC a
 -- custom error handling when evaluating function argument expressions, as well
 -- as the need for a new "value or closure" type that gets stored by the
 -- environment.
+
 type Environment a = [(E.Identifier, LamExprC a)]
 
 data Closure a = Closure E.Identifier (LamExprC a) (Environment a) deriving (Eq, Show)

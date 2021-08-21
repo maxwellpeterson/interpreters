@@ -36,11 +36,10 @@ data InterpError = UndefinedFunction Name | UnboundIdentifier Identifier derivin
 
 type InterpResult = Either InterpError
 
-interp :: Num a => [FunDefC a] -> ExprC a -> InterpResult a
+interp :: forall a. Num a => [FunDefC a] -> ExprC a -> InterpResult a
 interp funDefs = interpExpr
   where
-    -- Need scoped type variables in order to add signature here?
-    -- interpExpr :: ExprC a -> Either InterpError a
+    interpExpr :: ExprC a -> Either InterpError a
     interpExpr (Value num) = return num
     interpExpr (Add left right) = (+) <$> interpExpr left <*> interpExpr right
     interpExpr (Mul left right) = (*) <$> interpExpr left <*> interpExpr right
@@ -50,12 +49,13 @@ interp funDefs = interpExpr
         inputValue <- interpExpr inputExpr
         interpExpr (subst inputValue identifier body)
     interpExpr (IdC identifier) = Left (UnboundIdentifier identifier)
-    -- lookupFunDef :: Name -> Maybe (FunDefC a)
+    lookupFunDef :: Name -> Maybe (FunDefC a)
     lookupFunDef targetName = find (\(FunDefC name _ _) -> name == targetName) funDefs
 
-subst :: a -> Identifier -> ExprC a -> ExprC a
+subst :: forall a. a -> Identifier -> ExprC a -> ExprC a
 subst value targetIdentifier = substExpr
   where
+    substExpr :: ExprC a -> ExprC a
     substExpr (Add left right) = Add (substExpr left) (substExpr right)
     substExpr (Mul left right) = Mul (substExpr left) (substExpr right)
     substExpr (AppC name inputExpr) = AppC name (substExpr inputExpr)
