@@ -2,6 +2,7 @@ import Control.Monad (liftM2)
 import qualified Core.ArithC as A
 import qualified Core.Deferred as D
 import qualified Core.ExprC as E
+import qualified Core.LamExprC as L
 import Test.Hspec (SpecWith, describe, hspec, it, shouldBe, shouldNotSatisfy)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck.Arbitrary (Arbitrary (..))
@@ -85,6 +86,23 @@ main = hspec $ do
       \expr ->
         let firstResult = E.interp testFunDefs expr
          in label (labelResult firstResult) $ firstResult `shouldBe` D.interp testFunDefs expr
+  describe "interp with LamExprC" $ do
+    it "returns a closure" $
+      do
+        L.interp (L.AppC (L.LamC "x" (L.LamC "y" (L.Add (L.IdC "x") (L.IdC "y")))) (L.Value 10))
+        `shouldBe` L.ClosureResult (L.Closure "y" (L.Add (L.IdC "x") (L.IdC "y")) [("x", L.Value 10)])
+    it "handles a higher order function" $
+      do
+        L.interp (L.AppC (L.LamC "f" (L.AppC (L.IdC "f") (L.Value 5))) (L.LamC "x" (L.Mul (L.IdC "x") (L.IdC "x"))))
+        `shouldBe` L.ValueResult 25
+    it "handles nested closure application" $
+      do
+        L.interp (L.AppC (L.AppC (L.LamC "x" (L.LamC "y" (L.Add (L.IdC "x") (L.IdC "y")))) (L.Value 10)) (L.Value 5))
+        `shouldBe` L.ValueResult 15
+    it "returns an error for unexpected value" $ do
+      L.interp (L.AppC (L.Value 5) (L.Value 10)) `shouldBe` L.ErrorResult L.UnexpectedValue
+    it "returns an error for unexpected closure" $ do
+      L.interp (L.Add (L.Value 5) (L.LamC "x" (L.IdC "x"))) `shouldBe` L.ErrorResult L.UnexpectedClosure
 
 labelResult :: E.InterpResult a -> String
 labelResult (Left (E.UndefinedFunction _)) = "UndefinedFunction"
@@ -126,7 +144,6 @@ testInterpExprC interpExprC = do
       [E.FunDefC "square" "xx" (E.Mul (E.IdC "xx") (E.IdC "xx"))]
       (E.AppC "square" (E.IdC "yy"))
       `shouldBe` Left (E.UnboundIdentifier "yy")
-  -- Undefined
   prop "undefined function name appears in testNames" $
     \expr -> case interpExprC testFunDefs expr of
       Left (E.UndefinedFunction name) ->
