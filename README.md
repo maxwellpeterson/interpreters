@@ -1,6 +1,6 @@
 # Interpreters
 
-Growing a small programming language from scratch.
+Building up a small core language from scratch.
 
 ## About
 
