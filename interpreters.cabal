@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bb0c4be97d9cbab5707a9a512d34ac76e6a048786d980adc07666a916b8b22c1
+-- hash: 7d551dbc8dee9f7baae1f1188fd0e7b1bf2f61682cb00e4c38357795da283c05
 
 name:           interpreters
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 library
   exposed-modules:
       Core.ArithC
+      Core.BoxExprC
       Core.Deferred
       Core.ExprC
       Core.LamExprC
@@ -35,9 +36,12 @@ library
       Paths_interpreters
   hs-source-dirs:
       src
-  default-extensions: ExplicitForAll ScopedTypeVariables
+  default-extensions:
+      ExplicitForAll
+      ScopedTypeVariables
   build-depends:
       base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 executable interpreters-exe
@@ -49,6 +53,7 @@ executable interpreters-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , interpreters
   default-language: Haskell2010
 
@@ -63,6 +68,7 @@ test-suite interpreters-test
   build-depends:
       QuickCheck
     , base >=4.7 && <5
+    , containers
     , hspec
     , interpreters
   default-language: Haskell2010

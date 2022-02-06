@@ -3,6 +3,7 @@ import qualified Core.ArithC as A
 import qualified Core.Deferred as D
 import qualified Core.ExprC as E
 import qualified Core.LamExprC as L
+import qualified Core.BoxExprC as B
 import Test.Hspec (SpecWith, describe, hspec, it, shouldBe, shouldNotSatisfy)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck.Arbitrary (Arbitrary (..))
@@ -103,6 +104,8 @@ main = hspec $ do
       L.interp (L.AppC (L.Value 5) (L.Value 10)) `shouldBe` L.ErrorResult L.UnexpectedValue
     it "returns an error for unexpected closure" $ do
       L.interp (L.Add (L.Value 5) (L.LamC "x" (L.IdC "x"))) `shouldBe` L.ErrorResult L.UnexpectedClosure
+  describe "interp with BoxExprC" $ do
+    testBoxExprC
 
 labelResult :: E.InterpResult a -> String
 labelResult (Left (E.UndefinedFunction _)) = "UndefinedFunction"
@@ -163,3 +166,10 @@ testInterpExprC interpExprC = do
           unboundIdentifier (Left (E.UnboundIdentifier _)) = True
           unboundIdentifier _ = False
        in interpExprC testFunDefs expr `shouldNotSatisfy` unboundIdentifier
+
+testBoxExprC :: SpecWith ()
+testBoxExprC = do
+  it "boxes and unboxes values" $
+    B.interp (B.Unbox (B.Box (B.Value 5))) `shouldBe` Right (B.ValueResult 5)
+  it "allows boxed values to be mutated" $
+    B.interp (B.AppC (B.LamC "box" (B.Seq (B.SetBox (B.IdC "box") (B.Value 10)) (B.Unbox (B.IdC "box")))) (B.Box (B.Value 5))) `shouldBe` Right (B.ValueResult 10)

@@ -19,10 +19,9 @@ data LamExprC a
   deriving (Eq, Show)
 
 -- Lazy bindings, where expressions may evaluate to values or closures (or
--- errors). Lazy is convenient (lazy) here, since it eliminates the need for
--- custom error handling when evaluating function argument expressions, as well
--- as the need for a new "value or closure" type that gets stored by the
--- environment.
+-- errors). Lazy is convenient, since it eliminates the need for custom error
+-- handling when evaluating function argument expressions, as well as the need
+-- for a new "value or closure" type that gets stored by the environment.
 
 type Environment a = [(E.Identifier, LamExprC a)]
 
@@ -40,15 +39,6 @@ data InterpResult a
   | ErrorResult InterpError
   deriving (Eq, Show)
 
--- Don't think I can do this, but there must be a way to clean up the
--- the checkResult / wrapResult error handling logic...
---
--- instance Monad InterpResult where
---   return = ValueResult
---   (ValueResult v) >>= f = f v
---   (ClosureResult c) >>= f = ErrorResult UnexpectedClosure -- Violates monad law!?
---   (ErrorResult e) >>= f = ErrorResult e
-
 interp :: Num a => LamExprC a -> InterpResult a
 interp = interpEnv []
 
@@ -62,7 +52,9 @@ interpEnv env = interpCurEnv
     interpCurEnv (AppC func inputExpr) = case interpCurEnv func of
       -- Replace current environment with closure environment plus input
       -- expression binding on application
-      ClosureResult (Closure identifier body closureEnv) -> interpEnv ((identifier, inputExpr) : closureEnv) body
+      ClosureResult (Closure identifier body closureEnv) -> interpEnv (
+        (identifier, inputExpr) : closureEnv
+        ) body
       ValueResult _ -> ErrorResult UnexpectedValue
       (ErrorResult error) -> ErrorResult error
     interpCurEnv (IdC identifier) = case lookup identifier env of
@@ -72,7 +64,10 @@ interpEnv env = interpCurEnv
     -- Closure captures current environment
     interpCurEnv (LamC identifier body) = ClosureResult (Closure identifier body env)
     interpOperator :: (a -> a -> a) -> LamExprC a -> LamExprC a -> InterpResult a
-    interpOperator operator left right = wrapResult (operator <$> (checkResult . interpCurEnv $ left) <*> (checkResult . interpCurEnv $ right))
+    interpOperator operator left right = wrapResult (
+      operator <$> (checkResult . interpCurEnv $ left)
+      <*> (checkResult . interpCurEnv $ right)
+      )
 
 checkResult :: Num a => InterpResult a -> Either InterpError a
 checkResult (ValueResult num) = Right num
